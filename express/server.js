@@ -1,7 +1,5 @@
 const express = require('express')
 const PORT = 9000
-const fs = require('fs')
-let users = fs.readFileSync('users.json', 'utf-8')
 
 users = JSON.parse(users)
 // requiring services
