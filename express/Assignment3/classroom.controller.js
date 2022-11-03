@@ -2,26 +2,29 @@ const fs = require('fs')
 
 let students = fs.readFileSync('./data/students.json', 'utf-8')
 let teachers = fs.readFileSync('./data/teacher.json', 'utf-8')
+let classroom = fs.readFileSync('./data/classroom.json' , 'utf-8')
 
 students = JSON.parse(students)
 teachers = JSON.parse(teachers)
-const listStudentsId = () => {
-    const stdId = students.map(s =>s.id);
-    console.log("Student ids",stdId)
-    fs.writeFileSync('./data/classroom.json', JSON.stringify(stdId), 'utf-8')
-    return "Get Student ids"
+classroom = JSON.parse(classroom)
 
-  }
+  const stdId = students.map(s =>s.id);
   const getTeacherId = tchId => {
     tchId = Number(tchId)
-    tchId = teachers.find(tch => tch.id === tchId)
-    fs.writeFileSync('./data/classroom.json', JSON.stringify(tchId), 'utf-8')
+    const teacher = teachers.find(tch => tch.id === tchId)
+    if(tchId!==null){
+      const obj = {teacher:teacher.id, student:stdId}
+      classroom.push(obj)
+    fs.writeFileSync('./data/classroom.json', JSON.stringify(classroom), 'utf-8')
     
     console.log("Teacher ids", tchId)
-   return "Found Teacher id "
+   return "Found Teacher id "}
+   else{
+    return "error"
+   }
+
 }
 
 module.exports = {
-    listStudentsId: listStudentsId,
     getTeacherId: getTeacherId
 }
