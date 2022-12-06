@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { SYSTEM_ROLES_ENUM } = require('../../config/constants') 
 
 const userSchema = new mongoose.Schema(
     {
@@ -17,6 +18,9 @@ const userSchema = new mongoose.Schema(
                 type: String,
                 unique: true
             },
+            phoneNumber: {
+                type: String
+              },
             email:{
                 type: String,
                 unique: true
@@ -33,8 +37,17 @@ const userSchema = new mongoose.Schema(
               },
               profilePath: {
                 type: String
+              },
+              uniqueKeys:{
+                type: [String]
+              },
+              OTP: {
+                type: String
+              },
+              systemRole: {
+                type: String,
+                enum: SYSTEM_ROLES_ENUM
               }
-        
     },
     {
         timestamps: true,

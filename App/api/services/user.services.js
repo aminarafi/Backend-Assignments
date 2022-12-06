@@ -47,4 +47,17 @@ const updateUser = async ({ userId, dataToUpdate }) => {
   }
 }
 
-module.exports = { createUser, getUserExistance, updateUser, getUserById}
+const verifyOTP = async ({ userId, OTP }) => {
+  try {
+    const user = await User.findOne({ _id: userId, OTP })
+      .lean()
+      .select('-password')
+
+    console.log('*** OTP verified ***', user)
+
+    return user
+  } catch (error) {
+    throw error
+  }
+}
+module.exports = { createUser, getUserExistance, updateUser, getUserById, verifyOTP}

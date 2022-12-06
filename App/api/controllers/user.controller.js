@@ -1,9 +1,27 @@
 const bcrypt = require('bcrypt')
 const JWT = require('jsonwebtoken')
-const { JWT_SECRET } = require('../../config/userConfig')
+// const { JWT_SECRET,
+//   TWILIO_ACCOUNT_SID,
+//   TWILIO_ACCOUNT_AUTH_TOKEN,
+//   TWILIO_MESSAGING_SERVICE_SID 
+// } = require('../../config/userConfig')
 
+const { v4: uuidv4 }= require('uuid');
+
+
+const client = require('twilio')(
+  process.env.TWILIO_ACCOUNT_SID,
+  process.env.TWILIO_ACCOUNT_AUTH_TOKEN
+)
+
+const { randomBytes: randomBytesCb } = require('crypto')
+
+const { promisify } = require('util')
+
+const randomBytes = promisify(randomBytesCb)
 // importing services
 const UserService = require('../services/user.services')
+
 
 const signup = async (req, res) => {
   try {
@@ -53,7 +71,7 @@ const login = async (req, res) => {
         message: 'Incorrect credentails.'
       })
     }
-
+  
     const passwordMatched = await bcrypt.compare(password, user.password)
 
     if (!passwordMatched) {
@@ -62,21 +80,27 @@ const login = async (req, res) => {
       })
     }
 
-    const payload = {
-      _id: user._id,
-      email: user.email,
-      userName: user.userName,
-      firstName: user.firstName,
-      lastName: user.lastName
-    }
+    console.log({ phoneNumber: user.phoneNumber })
 
-    const token = JWT.sign(payload, JWT_SECRET, {
-      expiresIn: '24h'
+    const buff = await randomBytes(5)
+  
+    const OTP = buff.toString('hex')
+
+    console.log(`${buff.length} bytes of random data: ${OTP}`)
+
+    const sentSMS = await client.messages.create({
+      body: OTP,
+      messagingServiceSid: process.env.TWILIO_MESSAGING_SERVICE_SID,
+      to: user.phoneNumber
+    })
+
+    const updatesUser = await UserService.updateUser({
+      userId: user._id,
+      dataToUpdate: { OTP }
     })
 
     res.status(200).json({
-      message: 'SUCCESS: logged in.',
-      token
+      message: 'Please enter the OTP'
     })
   } catch (error) {
     console.log(error)
@@ -84,6 +108,7 @@ const login = async (req, res) => {
     res.status(500).json({ error: 'INTERNAL SERVER ERROR' })
   }
 }
+
 const updateUser = async (req, res) => {
   try {
     // update user here
@@ -130,4 +155,76 @@ const uploadProfileImage = async (req, res) => {
   }
 }
 
-module.exports = { signup, login, updateUser, uploadProfileImage }
+const logout = async(req, res) =>{
+  try {
+    const user = req.user
+    user.uniqueKey
+
+ //const userFound = await UserService.getUserById(user._id)
+ 
+    const uniqueKeys = []
+    //To delete single uniquekey 
+    // userFound.uniqueKeys.filter(
+    //   key => user.uniqueKey !== key
+    // )
+    await UserService.updateUser({
+      userId: user._id,
+      dataToUpdate: {uniqueKeys}
+    })
+    res.status(200).json({
+      message: 'SUCCESS logged out!'
+    })
+  } catch (error) {
+    console.log(error)
+  
+    res.status(500).json({ error: 'INTERNAL SERVER ERROR' })
+  }
+  
+  }
+
+  const verifyOTP = async (req, res) => {
+    try {
+      const { OTP } = req.body
+  
+      const { userId } = req.params
+  
+      const user = await UserService.verifyOTP({ OTP, userId })
+  
+      if (!user) {
+        return res.status(401).json({
+          message: 'Verification failed!'
+        })
+      }
+  
+      const uniqueKey = uuidv4()
+  
+      const payload = {
+        _id: user._id,
+        email: user.email,
+        userName: user.userName,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        uniqueKey
+      }
+  
+      const token = JWT.sign(payload, process.env.JWT_SECRET, {
+        expiresIn: '24h'
+      })
+  
+      await UserService.updateUser({
+        userId: user._id,
+        dataToUpdate: { $addToSet: { uniqueKeys: uniqueKey }, OTP: '' }
+      })
+  
+      res.status(200).json({
+        message: 'SUCCESS: logged in.',
+        token
+      })
+    } catch (error) {
+      console.log(error)
+  
+      res.status(500).json({ error: 'INTERNAL SERVER ERROR' })
+    }
+  }
+
+module.exports = { signup, login, updateUser, uploadProfileImage, logout , verifyOTP}
